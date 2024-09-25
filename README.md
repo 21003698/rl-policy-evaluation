@@ -1,17 +1,236 @@
 # POLICY EVALUATION
 
 ## AIM
-Write the experiment AIM.
+To develop a Python program to evaluate the given policy by maximizing its cumulative reward while dealing with slippery terrain.
 
 ## PROBLEM STATEMENT
-Explain the problem statement.
+We are assigned with the task of creating an RL agent to solve the "Bandit Slippery Walk" problem.
+
+The environment consists of Seven states representing discrete positions the agent can occupy.
+
+The agent must learn to navigate this environment while dealing with the challenge of slippery terrain.
+
+Slippery terrain introduces stochasticity in the agent's actions, making it difficult to predict the outcomes of its actions accurately.
+
+## States :
+The environment has 7 states :
+
+Two Terminal States: *G: The goal state & *H: A hole state.
+
+Five Transition states / Non-terminal States including S: The starting state.
+
+## Actions :
+The agent can take two actions:
+
+R -> Move right.
+
+L -> Move left.
+
+## Transition Probabilities :
+The transition probabilities for each action are as follows:
+
+50% chance that the agent moves in the intended direction.
+
+33.33% chance that the agent stays in its current state.
+
+16.66% chance that the agent moves in the opposite direction.
+
+## Rewards :
+The agent receives a reward of +1 for reaching the goal state (G).
+
+The agent receives a reward of 0 for all other states.
+
+## Graphical Representation:
+![269646446-74eea05b-fd7a-4e0b-a9de-a3a124d7607a](https://github.com/user-attachments/assets/a7edc914-481e-44f2-95f4-b921bfb38b5d)
 
 ## POLICY EVALUATION FUNCTION
-Include the policy evaluation function
+### Formula:
+![269646475-0fb0fe63-3a14-416e-b7fc-fdf3bcb495ba](https://github.com/user-attachments/assets/e8f7f32e-e433-45ae-b0f6-62a66925bbe2)
 
-## OUTPUT:
-Mention the first and second policies along with its state value function and compare them
+## Program :
+```
+pip install git+https://github.com/mimoralea/gym-walk#egg=gym-walk
+
+import warnings ; warnings.filterwarnings('ignore')
+
+import gym, gym_walk
+import numpy as np
+
+import random
+import warnings
+
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+np.set_printoptions(suppress=True)
+random.seed(123); np.random.seed(123)
+
+### Reference https://github.com/mimoralea/gym-walk
+
+
+def print_policy(pi, P, action_symbols=('<', 'v', '>', '^'), n_cols=4, title='Policy:'):
+    print(title)
+    arrs = {k:v for k,v in enumerate(action_symbols)}
+    for s in range(len(P)):
+        a = pi(s)
+        print("| ", end="")
+        if np.all([done for action in P[s].values() for _, _, _, done in action]):
+            print("".rjust(9), end=" ")
+        else:
+            print(str(s).zfill(2), arrs[a].rjust(6), end=" ")
+        if (s + 1) % n_cols == 0: print("|")
+
+
+def print_state_value_function(V, P, n_cols=4, prec=3, title='State-value function:'):
+    print(title)
+    for s in range(len(P)):
+        v = V[s]
+        print("| ", end="")
+        if np.all([done for action in P[s].values() for _, _, _, done in action]):
+            print("".rjust(9), end=" ")
+        else:
+            print(str(s).zfill(2), '{}'.format(np.round(v, prec)).rjust(6), end=" ")
+        if (s + 1) % n_cols == 0: print("|")
+
+
+def probability_success(env, pi, goal_state, n_episodes=100, max_steps=200):
+    random.seed(123); np.random.seed(123) ; env.seed(123)
+    results = []
+    for _ in range(n_episodes):
+        state, done, steps = env.reset(), False, 0
+        while not done and steps < max_steps:
+            state, _, done, h = env.step(pi(state))
+            steps += 1
+        results.append(state == goal_state)
+    return np.sum(results)/len(results)
+
+
+def mean_return(env, pi, n_episodes=100, max_steps=200):
+    random.seed(123); np.random.seed(123) ; env.seed(123)
+    results = []
+    for _ in range(n_episodes):
+        state, done, steps = env.reset(), False, 0
+        results.append(0.0)
+        while not done and steps < max_steps:
+            state, reward, done, _ = env.step(pi(state))
+            results[-1] += reward
+            steps += 1
+    return np.mean(results)
+
+## Slippery Walk Five MDP:
+
+env = gym.make('SlipperyWalkFive-v0')
+P = env.env.P
+init_state = env.reset()
+goal_state = 6
+LEFT, RIGHT = range(2)
+
+P
+
+init_state
+
+state, reward, done, info = env.step(RIGHT)
+print("state:{0} - reward:{1} - done:{2} - info:{3}".format(state, reward, done, info))
+
+
+# First Policy
+pi_1 = lambda s: {
+    0:LEFT, 1:LEFT, 2:LEFT, 3:LEFT, 4:LEFT, 5:LEFT, 6:LEFT
+}[s]
+print_policy(pi_1, P, action_symbols=('<', '>'), n_cols=7)
+
+
+# Find the probability of success and the mean return of the first policy
+print('Reaches goal {:.2f}%. Obtains an average undiscounted return of {:.4f}.'.format(
+    probability_success(env, pi_1, goal_state=goal_state)*100,
+    mean_return(env, pi_1)))
+
+ # Create your own policy
+
+pi_2 = lambda s: {
+    0:LEFT, 1:RIGHT, 2:LEFT, 3:RIGHT, 4:LEFT, 5:RIGHT, 6:LEFT
+}[s]
+
+print_policy(pi_2, P, action_symbols=('<', '>'), n_cols=7)
+
+## Find the probability of success and the mean return of you your policy
+print('Reaches goal {:.2f}%. Obtains an average undiscounted return of {:.4f}.'.format(
+      probability_success(env, pi_2, goal_state=goal_state)*100,
+      mean_return(env, pi_2)))
+
+# Calculate the success probability and mean return for both policies
+success_prob_pi_1 = probability_success(env, pi_1, goal_state=goal_state)
+mean_return_pi_1 = mean_return(env, pi_1)
+
+success_prob_pi_2 = probability_success(env, pi_2, goal_state=goal_state)
+mean_return_pi_2 = mean_return(env, pi_2)
+
+## Policy Evaluation:
+
+def policy_evaluation(pi, P, gamma=1.0, theta=1e-10):
+    prev_V = np.zeros(len(P), dtype=np.float64)
+    # Write your code here to evaluate the given policy
+    while True:
+      V = np.zeros(len(P))
+      for s in range(len(P)):
+        for prob, next_state, reward, done in P[s][pi(s)]:
+          V[s] += prob * (reward + gamma *  prev_V[next_state] * (not done))
+      if np.max(np.abs(prev_V - V)) < theta:
+        break
+      prev_V = V.copy()
+    return V
+
+# Code to evaluate the first policy
+V1 = policy_evaluation(pi_1, P)
+print_state_value_function(V1, P, n_cols=7, prec=5)
+
+# Code to evaluate the second policy
+# Write your code here
+V2 = policy_evaluation(pi_2, P)
+print_state_value_function(V2, P, n_cols=7, prec=5)
+
+# Comparing the two policies
+
+# Compare the two policies based on the value function using the above equation and find the best policy
+
+V1
+
+print_state_value_function(V1, P, n_cols=7, prec=5)
+
+V2
+
+print_state_value_function(V2, P, n_cols=7, prec=5)
+
+V1>=V2
+
+if(np.sum(V1>=V2)==7):
+  print("The first policy has the better policy")
+elif(np.sum(V2>=V1)==7):
+  print("The second policy has the better policy")
+else:
+  print("Both policies have their merits.")
+
+```
+
+## Output:
+### Policy-1 :
+![362157980-81640a2e-62d3-4d57-8c43-7df26c3de6f5](https://github.com/user-attachments/assets/30bebc00-e47d-4d80-929e-01466b9a7b2e)
+
+### Policy-1 State-value function :
+![362158018-7ea96004-aec1-484c-ace7-246fd4fb3087](https://github.com/user-attachments/assets/e9c918d9-d16b-4e3a-8c42-0edbb779056d)
+
+### The probability of success and the mean return of the first policy : 
+![362158179-d99f4a04-edf0-4d06-b3e2-18f8a705d835](https://github.com/user-attachments/assets/d0dabd77-cc38-45be-b76a-4e34eb8992ca)
+
+## Policy-2 :
+![364243202-749fcb0a-1845-467f-9344-0ca17781122e](https://github.com/user-attachments/assets/a495a876-6cde-4cdc-9ea5-64766678d185)
+
+## Policy-2 State-value function :
+![364243265-eb63753f-aaf3-4cfe-b59f-6c030375ea10](https://github.com/user-attachments/assets/9b89d78a-30be-4b86-ba14-75adc3e9397b)
+
+## The probability of success and the mean return of the second policy :
+![364243911-6e794301-c0d9-457c-86a9-370f1f3356c2](https://github.com/user-attachments/assets/11b0e7f5-afb3-4840-9194-c0fa64a297d1)
+
+## Comparing the two policies:
+![364244199-a2e83043-5cc7-4386-833a-5fb2579d751e](https://github.com/user-attachments/assets/ef26a0bd-de54-45a9-bd53-9ae2ba34fb5d)
 
 ## RESULT:
-
-Write your result here
+Thus, the Given Policy has been Evaluated and Optimal Policy has been Computed using Python Programming and execcuted successfully.
